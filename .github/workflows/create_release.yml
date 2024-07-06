@@ -35,12 +35,15 @@ jobs:
       id: get-latest-release
       run: |
         LATEST_VERSION=$(curl -s https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest | jq -r .tag_name)
+        if [ "$LATEST_VERSION" = "null" ]; then
+          LATEST_VERSION=""
+        fi
         echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
 
     - name: Compare versions
       id: compare-versions
       run: |
-        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -V | head -n1)" != "$LATEST_VERSION" ]; then
+        if [ -n "$LATEST_VERSION" ] && [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -V | head -n1)" != "$LATEST_VERSION" ]; then
           echo "New version is not greater than the latest version"
           exit 1
         fi
