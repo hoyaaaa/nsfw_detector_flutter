@@ -1,6 +1,7 @@
 name: nsfw_detector_flutter
 description: A Flutter package to detect NSFW content in images.
 version: 1.0.0
+homepage: https://github.com/hoyaaaa/nsfw_detector_flutter
 
 environment:
   sdk: '>=3.3.1 <4.0.0'
