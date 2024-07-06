@@ -1,0 +1,61 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js environment
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+
+    - name: Extract version from pubspec.yaml
+      id: get-version
+      run: |
+        VERSION=$(grep '^version: ' pubspec.yaml | sed 's/version: //')
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+    - name: Extract release notes from CHANGELOG.md
+      id: get-release-notes
+      run: |
+        VERSION=${{ env.VERSION }}
+        RELEASE_NOTES=$(awk "/## \[${VERSION}\]/{flag=1;next}/## /{flag=0}flag" CHANGELOG.md)
+        echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
+        echo "$RELEASE_NOTES" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+
+    - name: Get latest release version
+      id: get-latest-release
+      run: |
+        LATEST_VERSION=$(curl -s https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest | jq -r .tag_name)
+        echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+
+    - name: Compare versions
+      id: compare-versions
+      run: |
+        if [ "$(printf '%s\n' "$LATEST_VERSION" "$VERSION" | sort -V | head -n1)" != "$LATEST_VERSION" ]; then
+          echo "New version is not greater than the latest version"
+          exit 1
+        fi
+        if [ -z "${RELEASE_NOTES}" ]; then
+          echo "Release notes not found for version $VERSION"
+          exit 1
+        fi
+
+    - name: Create GitHub Release
+      id: create-release
+      uses: actions/create-release@v1
+      with:
+        tag_name: ${{ env.VERSION }}
+        release_name: Release ${{ env.VERSION }}
+        body: ${{ env.RELEASE_NOTES }}
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
