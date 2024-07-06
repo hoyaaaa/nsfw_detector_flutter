@@ -7,61 +7,19 @@ A Flutter package to detect NSFW (Not Safe For Work) content in images using Ten
 - Detect NSFW content in images.
 - Provide NSFW score and classification.
 
-## Supported Platforms
-
-- Android
-- iOS
-
-## Installation
-
-### From pub.dev
-
-To use this package from pub.dev, run `pub add` command.
-
-```sh
-flutter pub add nsfw_detector_flutter
-```
-
-### From git repository
-
-To use this package, add `nsfw_detector_flutter` as a dependency in your `pubspec.yaml` file.
-
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  nsfw_detector_flutter:
-    path: ../nsfw_detector_flutter
-```
-
-Then, run `flutter pub get` to install the package.
-
-## Warnings
-
-### iOS
-
-If there are issues related to the library on iOS and it doesn't work, check the following setting in XCode:
-
-1. Ensure that **XCode > Build Settings > Deployment > Strip Linked Product** is set to **No**.
-
-### Android
-
-This package uses the `flutter_lints` package, so the Android `minSdkVersion` must be set to 26 or higher. Check the following setting in the `android/app/build.gradle` file:
-
-```gradle
-android {
-    defaultConfig {
-        minSdkVersion 26
-    }
-}
-```
-
 ## Usage
 
-### Import the package
+### Simple usage
 
 ```dart
 import 'package:nsfw_detector_flutter/nsfw_detector_flutter.dart';
+
+NsfwDetector detector = await NsfwDetector.load();
+File imageFile = File('path/to/image.jpg');
+NsfwResult? result = await detector.detectNSFWFromFile(imageFile);
+
+print("NSFW detected: ${result?.isNsfw}"); // whether it is over threshold (default: 0.7)
+print("NSFW score: ${result?.score}"); // double value from 0 to 1
 ```
 
 ### Load and initialize the detector
@@ -70,21 +28,31 @@ The `NsfwDetector` can be initialized with default parameters:
 
 ```dart
 NsfwDetector detector = await NsfwDetector.load();
+
+// Default parameters
+// NsfwDetector detector = await NsfwDetector.load(threshold: 0.7, inputWidth: 224, inputHeight: 224);
 ```
+
+### NsfwResult
+
+The `NsfwResult` class contains the following properties:
+
+| Parameter     | Type    | Description                                                   |
+|---------------|-------- |---------------------------------------------------------------|
+| `score`       | Float   | The NSFW score of the image (0 to 1, higher indicates more NSFW) |
+| `isNsfw`      | Boolean | Indicates if the image is classified as NSFW based on the threshold |
 
 ### Load and initialize the detector with parameters
 
 You can customize the detector initialization with the following parameters:
 
-- `threshold`: The threshold to classify an image as NSFW. Default is `0.7`.
-- `inputWidth`: The input width for the model. Default is `224`.
-- `inputHeight`: The input height for the model. Default is `224`.
+| Parameter     | Type    | Default | Description                                                   |
+|---------------|---------|---------|---------------------------------------------------------------|
+| `threshold`   | Float   | 0.7     | The threshold to classify an image as NSFW                    |
+| `inputWidth`  | Integer | 224     | The input width for the model                                 |
+| `inputHeight` | Integer | 224     | The input height for the model                                |
 
 Note: The default values for `inputWidth` and `inputHeight` are set to `224` to match the provided model. If you are using the provided model, you can use the default values. If you want to use a different model, you should specify the correct dimensions.
-
-```dart
-NsfwDetector detector = await NsfwDetector.load(threshold: 0.8, inputWidth: 256, inputHeight: 256);
-```
 
 ### Load a custom model from asset or file
 
@@ -129,73 +97,6 @@ print("NSFW score: ${result?.score}");
 print("NSFW detected: ${result?.isNsfw}");
 ```
 
-### Example
-
-Here is a full example of how to use the `nsfw_detector_flutter` package in a Flutter application.
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:nsfw_detector_flutter/nsfw_detector_flutter.dart';
-import 'package:flutter/services.dart';
-import 'dart:io';
-import 'package:image/image.dart' as img;
-
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatefulWidget {
-  @override
-  _MyAppState createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  String _result = "Loading...";
-
-  @override
-  void initState() {
-    super.initState();
-    _detectNSFW();
-  }
-
-  Future<void> _detectNSFW() async {
-    // Load the image file
-    final ByteData data = await rootBundle.load('assets/nsfw.jpeg');
-    final Uint8List imageData = data.buffer.asUint8List();
-    img.Image image = img.decodeImage(imageData)!;
-
-    // Load and initialize the NSFW detector
-    NsfwDetector detector = await NsfwDetector.load();
-    NsfwResult? result = await detector.detectNSFWFromImage(image);
-
-    setState(() {
-      _result = 'NSFW score: ${result?.score}, Detected: ${result?.isNsfw}';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text('NSFW Detector Example'),
-        ),
-        body: Center(
-          child: Text(_result),
-        ),
-      ),
-    );
-  }
-}
-```
-
-### NsfwResult
-
-The `NsfwResult` class contains the following properties:
-
-- `score`: The NSFW score of the image. This is a value between 0 and 1, where a higher score indicates a higher likelihood that the image is NSFW.
-- `isNsfw`: A boolean indicating whether the image is classified as NSFW based on the specified threshold.
-
 ### Model Information
 
 The default model used in this package is referenced from the [open_nsfw_android](https://github.com/devzwy/open_nsfw_android) repository, which is a port of the [yahoo/open_nsfw](https://github.com/yahoo/open_nsfw) model. This package complies with the license terms of the yahoo/open_nsfw repository.
@@ -216,6 +117,26 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 ### Integration Test
 
 For information on how to run integration tests for this package, please refer to the [example README](example/README.md).
+
+## Warnings
+
+### iOS
+
+If there are issues related to the library on iOS and it doesn't work, check the following setting in XCode:
+
+1. Ensure that **XCode > Build Settings > Deployment > Strip Linked Product** is set to **No**.
+
+### Android
+
+This package uses the `flutter_lints` package, so the Android `minSdkVersion` must be set to 26 or higher. Check the following setting in the `android/app/build.gradle` file:
+
+```gradle
+android {
+    defaultConfig {
+        minSdkVersion 26
+    }
+}
+```
 
 ## License
 

@@ -37,7 +37,8 @@ class NsfwDetector {
   static const _kInputHeight = 224;
 
   /// Path to the TFLite model
-  static const _kModelPath = 'packages/nsfw_detector_flutter/assets/nsfw.tflite';
+  static const _kModelPath =
+      'packages/nsfw_detector_flutter/assets/nsfw.tflite';
 
   /// Threshold for classifying NSFW content
   static const _kNSFWThreshold = 0.7;
@@ -55,7 +56,8 @@ class NsfwDetector {
   late final int _inputHeight;
 
   /// Private constructor for creating an instance of NsfwDetector
-  NsfwDetector._create(this._interpreter, this._threshold, this._inputWidth, this._inputHeight);
+  NsfwDetector._create(
+      this._interpreter, this._threshold, this._inputWidth, this._inputHeight);
 
   /// Closes the interpreter to release resources
   void close() {
@@ -63,21 +65,33 @@ class NsfwDetector {
   }
 
   /// Loads the NSFW detector with default parameters
-  static Future<NsfwDetector> load({double threshold = _kNSFWThreshold, int inputWidth = _kInputWidth, int inputHeight = _kInputHeight}) async {
+  static Future<NsfwDetector> load(
+      {double threshold = _kNSFWThreshold,
+      int inputWidth = _kInputWidth,
+      int inputHeight = _kInputHeight}) async {
     final interpreter = await Interpreter.fromAsset(_kModelPath);
-    return NsfwDetector._create(interpreter, threshold, inputWidth, inputHeight);
+    return NsfwDetector._create(
+        interpreter, threshold, inputWidth, inputHeight);
   }
 
   /// Loads the NSFW detector from a custom model asset path
-  static Future<NsfwDetector> loadFromAsset(String modelAssetPath, {double threshold = _kNSFWThreshold, int inputWidth = _kInputWidth, int inputHeight = _kInputHeight}) async {
+  static Future<NsfwDetector> loadFromAsset(String modelAssetPath,
+      {double threshold = _kNSFWThreshold,
+      int inputWidth = _kInputWidth,
+      int inputHeight = _kInputHeight}) async {
     final interpreter = await Interpreter.fromAsset(modelAssetPath);
-    return NsfwDetector._create(interpreter, threshold, inputWidth, inputHeight);
+    return NsfwDetector._create(
+        interpreter, threshold, inputWidth, inputHeight);
   }
 
   /// Loads the NSFW detector from a model file
-  static Future<NsfwDetector> loadFromFile(File modelFile, {double threshold = _kNSFWThreshold, int inputWidth = _kInputWidth, int inputHeight = _kInputHeight}) async {
+  static Future<NsfwDetector> loadFromFile(File modelFile,
+      {double threshold = _kNSFWThreshold,
+      int inputWidth = _kInputWidth,
+      int inputHeight = _kInputHeight}) async {
     final interpreter = Interpreter.fromFile(modelFile);
-    return NsfwDetector._create(interpreter, threshold, inputWidth, inputHeight);
+    return NsfwDetector._create(
+        interpreter, threshold, inputWidth, inputHeight);
   }
 
   /// Detects NSFW content from a file
@@ -94,7 +108,8 @@ class NsfwDetector {
 
   /// Detects NSFW content from an image
   Future<NsfwResult?> detectNSFWFromImage(img.Image image) async {
-    img.Image resizedImage = img.copyResize(image, width: _kInputWidth, height: _kInputHeight);
+    img.Image resizedImage =
+        img.copyResize(image, width: _kInputWidth, height: _kInputHeight);
 
     Uint8List input = _imageToByteList(resizedImage);
     final output = List.filled(1 * 2, 0.0).reshape([1, 2]);
