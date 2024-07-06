@@ -21,3 +21,7 @@ dev_dependencies:
 flutter:
   assets:
     - assets/nsfw.tflite
+
+platforms:
+  android:
+  ios:
