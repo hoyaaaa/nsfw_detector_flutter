@@ -26,8 +26,7 @@ flutter pub add nsfw_detector_flutter
 
 To use this package, add `nsfw_detector_flutter` as a dependency in your `pubspec.yaml` file.
 
-```
-yaml
+```yaml
 dependencies:
   flutter:
     sdk: flutter
@@ -49,8 +48,7 @@ If there are issues related to the library on iOS and it doesn't work, check the
 
 This package uses the `flutter_lints` package, so the Android `minSdkVersion` must be set to 26 or higher. Check the following setting in the `android/app/build.gradle` file:
 
-```
-gradle
+```gradle
 android {
     defaultConfig {
         minSdkVersion 26
@@ -62,8 +60,7 @@ android {
 
 ### Import the package
 
-```
-dart
+```dart
 import 'package:nsfw_detector_flutter/nsfw_detector_flutter.dart';
 ```
 
@@ -71,8 +68,7 @@ import 'package:nsfw_detector_flutter/nsfw_detector_flutter.dart';
 
 The `NsfwDetector` can be initialized with default parameters:
 
-```
-dart
+```dart
 NsfwDetector detector = await NsfwDetector.load();
 ```
 
@@ -86,8 +82,7 @@ You can customize the detector initialization with the following parameters:
 
 Note: The default values for `inputWidth` and `inputHeight` are set to `224` to match the provided model. If you are using the provided model, you can use the default values. If you want to use a different model, you should specify the correct dimensions.
 
-```
-dart
+```dart
 NsfwDetector detector = await NsfwDetector.load(threshold: 0.8, inputWidth: 256, inputHeight: 256);
 ```
 
@@ -95,16 +90,14 @@ NsfwDetector detector = await NsfwDetector.load(threshold: 0.8, inputWidth: 256,
 
 If you want to use a different model, you can load it from an asset or file:
 
-```
-dart
+```dart
 NsfwDetector detectorFromAsset = await NsfwDetector.loadFromAsset('path/to/custom_model.tflite');
 NsfwDetector detectorFromFile = await NsfwDetector.loadFromFile(File('path/to/custom_model.tflite'));
 ```
 
 ### Detect NSFW content from bytes
 
-```
-dart
+```dart
 final ByteData data = await rootBundle.load('assets/nsfw.jpeg');
 final Uint8List imageData = data.buffer.asUint8List();
 
@@ -116,8 +109,7 @@ print("NSFW detected: ${result?.isNsfw}");
 
 ### Detect NSFW content from file
 
-```
-dart
+```dart
 File imageFile = File('path/to/image.jpg');
 NsfwResult? result = await detector.detectNSFWFromFile(imageFile);
 
@@ -127,8 +119,7 @@ print("NSFW detected: ${result?.isNsfw}");
 
 ### Detect NSFW content from image
 
-```
-dart
+```dart
 import 'package:image/image.dart' as img;
 
 img.Image image = img.decodeImage(File('path/to/image.jpg').readAsBytesSync())!;
@@ -142,8 +133,7 @@ print("NSFW detected: ${result?.isNsfw}");
 
 Here is a full example of how to use the `nsfw_detector_flutter` package in a Flutter application.
 
-```
-dart
+```dart
 import 'package:flutter/material.dart';
 import 'package:nsfw_detector_flutter/nsfw_detector_flutter.dart';
 import 'package:flutter/services.dart';
