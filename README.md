@@ -7,6 +7,11 @@ A Flutter package to detect NSFW (Not Safe For Work) content in images using Ten
 - Detect NSFW content in images.
 - Provide NSFW score and classification.
 
+## Supported Platforms
+
+- Android
+- iOS
+
 ## Installation
 
 ### From pub.dev
