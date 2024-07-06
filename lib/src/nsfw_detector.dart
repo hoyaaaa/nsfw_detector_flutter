@@ -84,9 +84,9 @@ class NsfwDetector {
     for (var i = 0; i < _inputHeight; i++) {
       for (var j = 0; j < _inputWidth; j++) {
         var pixel = image.getPixel(j, i);
-        imgData[index++] = (img.getBlue(pixel) - VggMean.blue).toDouble();
-        imgData[index++] = (img.getGreen(pixel) - VggMean.green).toDouble();
-        imgData[index++] = (img.getRed(pixel) - VggMean.red).toDouble();
+        imgData[index++] = (pixel.b - VggMean.blue).toDouble();
+        imgData[index++] = (pixel.g - VggMean.green).toDouble();
+        imgData[index++] = (pixel.r - VggMean.red).toDouble();
       }
     }
 

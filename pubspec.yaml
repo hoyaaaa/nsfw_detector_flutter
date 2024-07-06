@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   tflite_flutter: ^0.10.4
-  image: ^3.0.1
+  image: ^4.2.0
 
 dev_dependencies:
   flutter_test:
