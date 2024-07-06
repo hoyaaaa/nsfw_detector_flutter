@@ -19,4 +19,7 @@ dev_dependencies:
 
 flutter:
   assets:
-    - assets/models/nsfw.tflite
+    - assets/nsfw.tflite
+    - test/assets/nsfw.jpeg
+    - test/assets/bikini.jpeg
+    - test/assets/dress.jpeg
