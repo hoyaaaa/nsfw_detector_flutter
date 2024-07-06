@@ -40,7 +40,7 @@ class NsfwDetector {
   static const _kModelPath =
       'packages/nsfw_detector_flutter/assets/nsfw.tflite';
 
-  /// Threshold for classifying NSFW content
+  /// Default threshold for classifying NSFW content
   static const _kNSFWThreshold = 0.7;
 
   /// Interpreter for running the TFLite model
@@ -49,15 +49,14 @@ class NsfwDetector {
   /// Threshold for NSFW classification
   late final double _threshold;
 
-  /// Input width for the model
-  late final int _inputWidth;
+  /// (deprecated) Input width for the model
+  // late final int _inputWidth;
 
-  /// Input height for the model
-  late final int _inputHeight;
+  /// (deprecated) Input height for the model
+  // late final int _inputHeight;
 
   /// Private constructor for creating an instance of NsfwDetector
-  NsfwDetector._create(
-      this._interpreter, this._threshold, this._inputWidth, this._inputHeight);
+  NsfwDetector._create(this._interpreter, this._threshold);
 
   /// Closes the interpreter to release resources
   void close() {
@@ -65,34 +64,30 @@ class NsfwDetector {
   }
 
   /// Loads the NSFW detector with default parameters
-  static Future<NsfwDetector> load(
-      {double threshold = _kNSFWThreshold,
-      int inputWidth = _kInputWidth,
-      int inputHeight = _kInputHeight}) async {
+  static Future<NsfwDetector> load({double threshold = _kNSFWThreshold}) async {
     final interpreter = await Interpreter.fromAsset(_kModelPath);
-    return NsfwDetector._create(
-        interpreter, threshold, inputWidth, inputHeight);
+    return NsfwDetector._create(interpreter, threshold);
   }
 
-  /// Loads the NSFW detector from a custom model asset path
-  static Future<NsfwDetector> loadFromAsset(String modelAssetPath,
-      {double threshold = _kNSFWThreshold,
-      int inputWidth = _kInputWidth,
-      int inputHeight = _kInputHeight}) async {
-    final interpreter = await Interpreter.fromAsset(modelAssetPath);
-    return NsfwDetector._create(
-        interpreter, threshold, inputWidth, inputHeight);
-  }
+  /// (deprecated) Loads the NSFW detector from a custom model asset path
+  // static Future<NsfwDetector> loadFromAsset(String modelAssetPath,
+  //     {double threshold = _kNSFWThreshold,
+  //     int inputWidth = _kInputWidth,
+  //     int inputHeight = _kInputHeight}) async {
+  //   final interpreter = await Interpreter.fromAsset(modelAssetPath);
+  //   return NsfwDetector._create(
+  //       interpreter, threshold);
+  // }
 
-  /// Loads the NSFW detector from a model file
-  static Future<NsfwDetector> loadFromFile(File modelFile,
-      {double threshold = _kNSFWThreshold,
-      int inputWidth = _kInputWidth,
-      int inputHeight = _kInputHeight}) async {
-    final interpreter = Interpreter.fromFile(modelFile);
-    return NsfwDetector._create(
-        interpreter, threshold, inputWidth, inputHeight);
-  }
+  /// (deprecated) Loads the NSFW detector from a model file
+  // static Future<NsfwDetector> loadFromFile(File modelFile,
+  //     {double threshold = _kNSFWThreshold,
+  //     int inputWidth = _kInputWidth,
+  //     int inputHeight = _kInputHeight}) async {
+  //   final interpreter = Interpreter.fromFile(modelFile);
+  //   return NsfwDetector._create(
+  //       interpreter, threshold);
+  // }
 
   /// Detects NSFW content from a file
   Future<NsfwResult?> detectNSFWFromFile(File imageFile) async {
@@ -126,13 +121,13 @@ class NsfwDetector {
 
   /// Converts an image to a byte list suitable for the model input
   Uint8List _imageToByteList(img.Image image) {
-    final buffer = Uint8List(_inputWidth * _inputHeight * 3 * 4);
+    final buffer = Uint8List(_kInputWidth * _kInputHeight * 3 * 4);
     final byteBuffer = buffer.buffer;
     final imgData = Float32List.view(byteBuffer);
 
     int index = 0;
-    for (var i = 0; i < _inputHeight; i++) {
-      for (var j = 0; j < _inputWidth; j++) {
+    for (var i = 0; i < _kInputHeight; i++) {
+      for (var j = 0; j < _kInputWidth; j++) {
         var pixel = image.getPixel(j, i);
         imgData[index++] = (pixel.b - VggMean.blue).toDouble();
         imgData[index++] = (pixel.g - VggMean.green).toDouble();

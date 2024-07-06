@@ -17,5 +17,9 @@
 - Updated `image` package to the latest version for improved performance and compatibility.
 
 ## [1.0.2] - 2024-07-06
-#### Updated
+### Updated
 - Updated documentation to include new parameters for NSFW classification.
+
+## [1.0.3] - 2024-07-06
+### Updated
+- Updated documentation to read easily.
