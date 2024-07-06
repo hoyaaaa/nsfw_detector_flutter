@@ -81,7 +81,7 @@ If there are issues related to the library on iOS and it doesn't work, check the
 
 ### Android
 
-This package uses the `flutter_lints` package, so the Android `minSdkVersion` must be set to 26 or higher. Check the following setting in the `android/app/build.gradle` file:
+This package uses the `tflite_flutter` package, so the Android `minSdkVersion` must be set to 26 or higher. Check the following setting in the `android/app/build.gradle` file:
 
 ```gradle
 android {
