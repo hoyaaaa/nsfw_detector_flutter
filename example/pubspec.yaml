@@ -1,0 +1,24 @@
+name: nsfw_detector_flutter_example
+description: An example application to test nsfw_detector_flutter package.
+
+environment:
+  sdk: '>=3.3.1 <4.0.0'
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  nsfw_detector_flutter:
+    path: ../
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+flutter:
+  assets:
+    - assets/nsfw.jpeg
+    - assets/bikini.jpeg
+    - assets/dress.jpeg
