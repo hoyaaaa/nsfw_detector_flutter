@@ -1,6 +1,6 @@
 name: nsfw_detector_flutter
 description: A Flutter package for detecting NSFW (Not Safe For Work) content in images using TensorFlow Lite. Easily integrate NSFW detection capabilities into your Flutter applications.
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/hoyaaaa/nsfw_detector_flutter
 
 environment:
