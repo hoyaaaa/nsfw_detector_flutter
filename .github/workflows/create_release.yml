@@ -26,7 +26,7 @@ jobs:
       id: get-release-notes
       run: |
         VERSION=${{ env.VERSION }}
-        RELEASE_NOTES=$(awk "/## \[${VERSION}\]/{flag=1;next}/## /{flag=0}flag" CHANGELOG.md)
+        RELEASE_NOTES=$(sed -n "/## \[${VERSION}\] - /,/^## /p" CHANGELOG.md | sed '$d')
         echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
         echo "$RELEASE_NOTES" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
