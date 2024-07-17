@@ -1,7 +1,16 @@
 # 🙈 nsfw_detector_flutter
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub Release](https://img.shields.io/github/release/hoyaaaa/nsfw_detector_flutter.svg?style=flat)]()
+<p>
+    <a href="https://pub.dartlang.org/packages/nsfw_detector_flutter">
+        <img src="https://img.shields.io/pub/v/nsfw_detector_flutter" alt="pub package">
+    </a>
+    <a href="https://img.shields.io/github/license/hoyaaaa/nsfw_detector_flutter">
+        <img src="https://img.shields.io/github/license/hoyaaaa/nsfw_detector_flutter" alt="License">
+    </a>
+    <a href="https://github.com/hoyaaaa/nsfw_detector_flutter/issues">
+        <img src="https://img.shields.io/github/issues/hoyaaaa/nsfw_detector_flutter" alt="GitHub issues">
+    </a>
+</p>
 
 A Flutter package to detect NSFW 🔞 (Not Safe For Work / NUDE / adults) contents and classify SAFE 🛡️ contents __without downloading or setting any assets__
 
