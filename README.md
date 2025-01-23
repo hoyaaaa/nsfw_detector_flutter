@@ -96,12 +96,36 @@ If there are issues related to the library on iOS and it doesn't work, check the
 
 ### Android
 
-This package uses the `tflite_flutter` package, so the Android `minSdkVersion` must be set to 26 or higher. Check the following setting in the `android/app/build.gradle` file:
+#### 1.	Min SDK Version:
+
+This package uses the `tflite_flutter` package, so the Android `minSdkVersion` must be set to 26 or higher. Check and update the following in your `android/app/build.gradle` file:
 
 ```gradle
 android {
     defaultConfig {
         minSdkVersion 26
+    }
+}
+```
+
+#### 2.	ProGuard / R8 Configuration:
+
+If you encounter issues during release builds due to R8 (ProGuard), ensure that the following rules are added to your `android/app/proguard-rules.pro` file:
+
+```pro
+# TensorFlow Lite GPU Delegate
+-keep class org.tensorflow.lite.gpu.GpuDelegateFactory$Options { *; }
+-dontwarn org.tensorflow.lite.gpu.GpuDelegateFactory$Options
+```
+
+Also, verify that ProGuard or R8 is enabled in your `android/app/build.gradle` file:
+
+```gradle
+buildTypes {
+    release {
+        minifyEnabled true
+        shrinkResources true
+        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
     }
 }
 ```
