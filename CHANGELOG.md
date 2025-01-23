@@ -23,3 +23,7 @@
 ## [1.0.3] - 2024-07-06
 ### Updated
 - Updated documentation to read easily.
+
+## [1.0.5] - 2025-01-23
+### Updated
+- Updated README to include Android ProGuard settings.
