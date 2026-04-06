@@ -1,8 +1,33 @@
 import 'dart:io';
 
-import 'package:tflite_flutter/tflite_flutter.dart';
-import 'package:image/image.dart' as img;
 import 'dart:typed_data';
+
+import 'package:image/image.dart' as img;
+import 'package:tflite_flutter/tflite_flutter.dart';
+
+/// Exception thrown when NSFW detection fails.
+class NsfwDetectorException implements Exception {
+  /// Creates a detector exception with an optional underlying cause.
+  NsfwDetectorException(this.message, {this.cause, this.stackTrace});
+
+  /// Human-readable error message.
+  final String message;
+
+  /// Original error that triggered this exception.
+  final Object? cause;
+
+  /// Stack trace captured at the failure site.
+  final StackTrace? stackTrace;
+
+  @override
+  String toString() {
+    final buffer = StringBuffer('NsfwDetectorException: $message');
+    if (cause != null) {
+      buffer.write('\nCause: $cause');
+    }
+    return buffer.toString();
+  }
+}
 
 /// VggMean class defines the mean values for each channel used in the VGG model.
 class VggMean {
@@ -26,6 +51,22 @@ class NsfwResult {
 
   /// Constructor for creating an instance of NsfwResult
   NsfwResult(this.isNsfw, this.score);
+
+  @override
+  String toString() {
+    return 'NsfwResult(isNsfw: $isNsfw, score: $score)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is NsfwResult &&
+        other.isNsfw == isNsfw &&
+        other.score == score;
+  }
+
+  @override
+  int get hashCode => isNsfw.hashCode ^ score.hashCode;
 }
 
 /// NsfwDetector class handles the NSFW detection process.
@@ -49,12 +90,6 @@ class NsfwDetector {
   /// Threshold for NSFW classification
   late final double _threshold;
 
-  /// (deprecated) Input width for the model
-  // late final int _inputWidth;
-
-  /// (deprecated) Input height for the model
-  // late final int _inputHeight;
-
   /// Private constructor for creating an instance of NsfwDetector
   NsfwDetector._create(this._interpreter, this._threshold);
 
@@ -65,58 +100,88 @@ class NsfwDetector {
 
   /// Loads the NSFW detector with default parameters
   static Future<NsfwDetector> load({double threshold = _kNSFWThreshold}) async {
-    final interpreter = await Interpreter.fromAsset(_kModelPath);
-    return NsfwDetector._create(interpreter, threshold);
+    _validateThreshold(threshold);
+
+    try {
+      final interpreter = await Interpreter.fromAsset(_kModelPath);
+      return NsfwDetector._create(interpreter, threshold);
+    } catch (error, stackTrace) {
+      throw NsfwDetectorException(
+        'Failed to load NSFW detector model from asset.',
+        cause: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
-
-  /// (deprecated) Loads the NSFW detector from a custom model asset path
-  // static Future<NsfwDetector> loadFromAsset(String modelAssetPath,
-  //     {double threshold = _kNSFWThreshold,
-  //     int inputWidth = _kInputWidth,
-  //     int inputHeight = _kInputHeight}) async {
-  //   final interpreter = await Interpreter.fromAsset(modelAssetPath);
-  //   return NsfwDetector._create(
-  //       interpreter, threshold);
-  // }
-
-  /// (deprecated) Loads the NSFW detector from a model file
-  // static Future<NsfwDetector> loadFromFile(File modelFile,
-  //     {double threshold = _kNSFWThreshold,
-  //     int inputWidth = _kInputWidth,
-  //     int inputHeight = _kInputHeight}) async {
-  //   final interpreter = Interpreter.fromFile(modelFile);
-  //   return NsfwDetector._create(
-  //       interpreter, threshold);
-  // }
 
   /// Detects NSFW content from a file
   Future<NsfwResult?> detectNSFWFromFile(File imageFile) async {
-    final image = img.decodeJpg(imageFile.readAsBytesSync());
-    return image == null ? null : await detectNSFWFromImage(image);
+    try {
+      final imageData = await imageFile.readAsBytes();
+      final image = img.decodeImage(imageData);
+      return image == null ? null : await detectNSFWFromImage(image);
+    } catch (error, stackTrace) {
+      if (error is NsfwDetectorException) {
+        rethrow;
+      }
+      throw NsfwDetectorException(
+        'Failed to detect NSFW content from file: ${imageFile.path}',
+        cause: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   /// Detects NSFW content from bytes
   Future<NsfwResult?> detectNSFWFromBytes(Uint8List imageData) async {
-    final image = img.decodeImage(imageData);
-    return image == null ? null : await detectNSFWFromImage(image);
+    try {
+      final image = img.decodeImage(imageData);
+      return image == null ? null : await detectNSFWFromImage(image);
+    } catch (error, stackTrace) {
+      if (error is NsfwDetectorException) {
+        rethrow;
+      }
+      throw NsfwDetectorException(
+        'Failed to detect NSFW content from image bytes.',
+        cause: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   /// Detects NSFW content from an image
   Future<NsfwResult?> detectNSFWFromImage(img.Image image) async {
-    img.Image resizedImage =
-        img.copyResize(image, width: _kInputWidth, height: _kInputHeight);
+    try {
+      final resizedImage = img.copyResize(
+        image,
+        width: _kInputWidth,
+        height: _kInputHeight,
+      );
 
-    Uint8List input = _imageToByteList(resizedImage);
-    final output = List.filled(1 * 2, 0.0).reshape([1, 2]);
+      final input = _imageToByteList(resizedImage);
+      final output = <List<double>>[List<double>.filled(2, 0.0)];
 
-    _interpreter.run(input, output);
+      _interpreter.run(input, output);
 
-    List<double> result = output.first ?? [];
-    double? score;
-    if (result.length == 2) {
-      score = result[1];
+      final result = output.first;
+      if (result.length < 2) {
+        throw NsfwDetectorException(
+          'Model output has unexpected shape: expected at least 2 values.',
+        );
+      }
+
+      final score = result[1];
+      return NsfwResult(score > _threshold, score);
+    } catch (error, stackTrace) {
+      if (error is NsfwDetectorException) {
+        rethrow;
+      }
+      throw NsfwDetectorException(
+        'Failed to detect NSFW content from image.',
+        cause: error,
+        stackTrace: stackTrace,
+      );
     }
-    return score == null ? null : NsfwResult(score > _threshold, score);
   }
 
   /// Converts an image to a byte list suitable for the model input
@@ -136,5 +201,18 @@ class NsfwDetector {
     }
 
     return buffer;
+  }
+
+  static void _validateThreshold(double threshold) {
+    if (threshold.isNaN ||
+        threshold.isInfinite ||
+        threshold < 0.0 ||
+        threshold > 1.0) {
+      throw ArgumentError.value(
+        threshold,
+        'threshold',
+        'Must be a finite value between 0.0 and 1.0.',
+      );
+    }
   }
 }
