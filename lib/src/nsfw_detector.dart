@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
@@ -65,6 +67,13 @@ class NsfwResult {
 
   /// Constructor for creating an instance of NsfwResult
   NsfwResult({required this.isNsfw, required this.score, required this.safeScore});
+
+  /// Creates a result from a JSON object.
+  factory NsfwResult.fromJson(Map<String, dynamic> json) => NsfwResult(
+    isNsfw: json['isNsfw'] as bool,
+    score: (json['score'] as num).toDouble(),
+    safeScore: (json['safeScore'] as num).toDouble(),
+  );
 
   /// Classification based on the NSFW score.
   NsfwClassification get classification {
@@ -157,6 +166,9 @@ class NsfwDetector {
   /// Threshold for NSFW classification
   late final double _threshold;
 
+  /// Optional GPU delegate held for the lifetime of the interpreter.
+  Delegate? _delegate;
+
   /// Whether this detector has been closed
   bool _isClosed = false;
 
@@ -169,12 +181,32 @@ class NsfwDetector {
   /// Closes the interpreter to release resources
   void close() {
     _isClosed = true;
-    _interpreter.close();
+    try {
+      _interpreter.close();
+    } finally {
+      _delegate?.delete();
+      _delegate = null;
+    }
   }
 
-  /// Loads the NSFW detector with default parameters
-  static Future<NsfwDetector> load({double threshold = _kNSFWThreshold}) async {
+  /// Loads the NSFW detector with default parameters.
+  ///
+  /// When `useGpu` is true, the detector will try the platform GPU delegate
+  /// first and transparently fall back to CPU execution if delegate creation
+  /// or model loading fails.
+  static Future<NsfwDetector> load({
+    double threshold = _kNSFWThreshold,
+    bool useGpu = false,
+  }) async {
     _validateThreshold(threshold);
+
+    if (useGpu && (Platform.isAndroid || Platform.isIOS)) {
+      try {
+        return await _loadWithGpu(threshold);
+      } catch (_) {
+        // Fall through to the CPU path.
+      }
+    }
 
     try {
       final interpreter = await Interpreter.fromAsset(_kModelPath);
@@ -188,7 +220,10 @@ class NsfwDetector {
     }
   }
 
-  /// Detects NSFW content from a file
+  /// Detects NSFW content from a file.
+  ///
+  /// HEIC images, which are the default camera format on iOS, are not
+  /// supported by the `image` package and will return `null`.
   Future<NsfwResult?> detectNSFWFromFile(File imageFile) async {
     if (_isClosed) throw StateError('NsfwDetector has been closed.');
     try {
@@ -207,9 +242,15 @@ class NsfwDetector {
     }
   }
 
-  /// Detects NSFW content from bytes
+  /// Detects NSFW content from bytes.
+  ///
+  /// HEIC images, which are the default camera format on iOS, are not
+  /// supported by the `image` package and will return `null`.
   Future<NsfwResult?> detectNSFWFromBytes(Uint8List imageData) async {
     if (_isClosed) throw StateError('NsfwDetector has been closed.');
+    if (imageData.isEmpty) {
+      throw ArgumentError('imageData must not be empty.');
+    }
     try {
       final image = img.decodeImage(imageData);
       return image == null ? null : await detectNSFWFromImage(image);
@@ -223,6 +264,73 @@ class NsfwDetector {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  /// Detects NSFW content from a URL.
+  ///
+  /// Downloads the image from [url] and detects NSFW content.
+  /// Follows HTTP redirects. The timeout for the HTTP request is 10 seconds.
+  /// Throws [NsfwDetectorException] if the request times out or returns a non-200 status code.
+  Future<NsfwResult?> detectNSFWFromUrl(Uri url) async {
+    if (_isClosed) throw StateError('NsfwDetector has been closed.');
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 10);
+
+    try {
+      final request = await client.getUrl(url);
+      final response = await request.close().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('HTTP request timed out after 10 seconds.'),
+      );
+
+      if (response.statusCode != HttpStatus.ok) {
+        throw HttpException('HTTP request failed with status: ${response.statusCode}');
+      }
+
+      final bytes = await consolidateHttpClientResponseBytes(response);
+      return await detectNSFWFromBytes(bytes);
+    } catch (error, stackTrace) {
+      if (error is NsfwDetectorException) {
+        rethrow;
+      }
+      throw NsfwDetectorException(
+        'Failed to detect NSFW content from URL: $url',
+        cause: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Detects NSFW content from an [XFile].
+  Future<NsfwResult?> detectNSFWFromXFile(XFile xfile) async {
+    if (_isClosed) throw StateError('NsfwDetector has been closed.');
+    try {
+      final imageData = await xfile.readAsBytes();
+      return await detectNSFWFromBytes(imageData);
+    } catch (error, stackTrace) {
+      if (error is NsfwDetectorException || error is ArgumentError) {
+        rethrow;
+      }
+      throw NsfwDetectorException(
+        'Failed to detect NSFW content from XFile: ${xfile.name}',
+        cause: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Detects NSFW content from a batch of image bytes sequentially.
+  Future<List<NsfwResult?>> detectBatch(List<Uint8List> images) async {
+    if (_isClosed) throw StateError('NsfwDetector has been closed.');
+
+    final results = <NsfwResult?>[];
+    for (final imageData in images) {
+      results.add(await detectNSFWFromBytes(imageData));
+    }
+    return results;
   }
 
   /// Detects NSFW content from an image
@@ -324,6 +432,32 @@ class NsfwDetector {
   }) {
     _validateThreshold(threshold);
     return compute(_detectInIsolate, _IsolatePayload(imageData, threshold));
+  }
+
+  static Future<NsfwDetector> _loadWithGpu(double threshold) async {
+    final options = InterpreterOptions();
+    Delegate? delegate;
+    try {
+      delegate = Platform.isAndroid ? GpuDelegateV2() : GpuDelegate();
+      options.addDelegate(delegate);
+      final interpreter = await Interpreter.fromAsset(
+        _kModelPath,
+        options: options,
+      );
+      final detector = NsfwDetector._create(interpreter, threshold);
+      detector._delegate = delegate;
+      delegate = null;
+      return detector;
+    } catch (error, stackTrace) {
+      throw NsfwDetectorException(
+        'Failed to load NSFW detector model with GPU delegate.',
+        cause: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      options.delete();
+      delegate?.delete();
+    }
   }
 }
 
