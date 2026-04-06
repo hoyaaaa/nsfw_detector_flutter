@@ -11,9 +11,6 @@
         <img src="https://img.shields.io/pub/likes/nsfw_detector_flutter" alt="pub likes">
     </a>
     <a href="https://pub.dev/packages/nsfw_detector_flutter">
-        <img src="https://img.shields.io/pub/popularity/nsfw_detector_flutter" alt="pub popularity">
-    </a>
-    <a href="https://pub.dev/packages/nsfw_detector_flutter">
         <img src="https://img.shields.io/badge/platform-android%20%7C%20ios-lightgrey" alt="platform">
     </a>
     <a href="https://github.com/hoyaaaa/nsfw_detector_flutter/blob/main/LICENSE">
