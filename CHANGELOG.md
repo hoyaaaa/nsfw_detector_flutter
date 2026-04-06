@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.0] - 2026-04-06
+## [2.0.0] - 2026-04-06
 ### Breaking Changes
 - `NsfwResult` constructor now uses named required parameters: `NsfwResult(isNsfw: ..., score: ..., safeScore: ...)`.
 
