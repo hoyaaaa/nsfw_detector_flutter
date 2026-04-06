@@ -1,13 +1,13 @@
 # 🙈 nsfw_detector_flutter
 
 <p>
-    <a href="https://pub.dartlang.org/packages/nsfw_detector_flutter">
+    <a href="https://pub.dev/packages/nsfw_detector_flutter">
         <img src="https://img.shields.io/pub/v/nsfw_detector_flutter" alt="pub package">
     </a>
-    <a href="https://pub.dartlang.org/packages/nsfw_detector_flutter">
+    <a href="https://pub.dev/packages/nsfw_detector_flutter">
         <img src="https://img.shields.io/pub/likes/nsfw_detector_flutter" alt="pub package">
     </a>
-    <a href="https://pub.dartlang.org/packages/nsfw_detector_flutter">
+    <a href="https://pub.dev/packages/nsfw_detector_flutter">
         <img src="https://img.shields.io/pub/popularity/nsfw_detector_flutter" alt="pub package">
     </a>
     <a href="https://img.shields.io/github/license/hoyaaaa/nsfw_detector_flutter">
