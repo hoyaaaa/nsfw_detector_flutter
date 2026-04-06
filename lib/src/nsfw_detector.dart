@@ -1,7 +1,6 @@
 import 'dart:io';
 
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
@@ -66,7 +65,7 @@ class NsfwResult {
   }
 
   @override
-  int get hashCode => isNsfw.hashCode ^ score.hashCode;
+  int get hashCode => Object.hash(isNsfw, score);
 }
 
 /// NsfwDetector class handles the NSFW detection process.
@@ -150,6 +149,9 @@ class NsfwDetector {
   }
 
   /// Detects NSFW content from an image
+  ///
+  /// Inference runs synchronously on the calling isolate. Use `compute()`
+  /// or another background isolate if you need to keep the UI responsive.
   Future<NsfwResult?> detectNSFWFromImage(img.Image image) async {
     try {
       final resizedImage = img.copyResize(
@@ -158,10 +160,10 @@ class NsfwDetector {
         height: _kInputHeight,
       );
 
-      final input = _imageToByteList(resizedImage);
+      final inputBuffer = _imageToInputBuffer(resizedImage);
       final output = <List<double>>[List<double>.filled(2, 0.0)];
 
-      _interpreter.run(input, output);
+      _interpreter.run(inputBuffer, output);
 
       final result = output.first;
       if (result.length < 2) {
@@ -184,8 +186,12 @@ class NsfwDetector {
     }
   }
 
-  /// Converts an image to a byte list suitable for the model input
-  Uint8List _imageToByteList(img.Image image) {
+  /// Converts an image to the model's Float32 input buffer.
+  ///
+  /// The buffer is laid out as consecutive BGR pixels with VGG mean
+  /// subtraction applied to each channel:
+  /// `[blue - 103.939, green - 116.779, red - 123.68]`.
+  Uint8List _imageToInputBuffer(img.Image image) {
     final buffer = Uint8List(_kInputWidth * _kInputHeight * 3 * 4);
     final byteBuffer = buffer.buffer;
     final imgData = Float32List.view(byteBuffer);
@@ -201,6 +207,12 @@ class NsfwDetector {
     }
 
     return buffer;
+  }
+
+  /// Validates the requested threshold for tests and call-site reuse.
+  @visibleForTesting
+  static void validateThreshold(double threshold) {
+    _validateThreshold(threshold);
   }
 
   static void _validateThreshold(double threshold) {
