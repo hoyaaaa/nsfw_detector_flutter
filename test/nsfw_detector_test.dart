@@ -47,6 +47,16 @@ void main() {
       });
     });
 
+    test('fromJson parses numeric values into a result', () {
+      final result = NsfwResult.fromJson({
+        'isNsfw': true,
+        'score': 0.87,
+        'safeScore': 0.13,
+      });
+
+      expect(result, NsfwResult(isNsfw: true, score: 0.87, safeScore: 0.13));
+    });
+
     test('copyWith creates new instance with updated fields', () {
       final original = NsfwResult(isNsfw: true, score: 0.87, safeScore: 0.13);
 
