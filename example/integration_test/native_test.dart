@@ -9,12 +9,16 @@ import 'package:nsfw_detector_flutter/nsfw_detector_flutter.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(() {
+  late NsfwDetector detector;
+
+  setUpAll(() async {
     print('Starting NSFW Detector tests...');
+    detector = await NsfwDetector.load();
   });
 
   tearDownAll(() {
     print('NSFW Detector tests completed.');
+    detector.close();
   });
 
   if (Platform.isAndroid || Platform.isIOS) {
@@ -22,7 +26,6 @@ void main() {
       final ByteData data = await rootBundle.load('assets/nsfw.jpeg');
       final Uint8List imageData = data.buffer.asUint8List();
 
-      NsfwDetector detector = await NsfwDetector.load();
       NsfwResult? result = await detector.detectNSFWFromBytes(imageData);
 
       print("NSFW score: ${result?.score}");
@@ -33,7 +36,6 @@ void main() {
       final ByteData data = await rootBundle.load('assets/bikini.jpeg');
       final Uint8List imageData = data.buffer.asUint8List();
 
-      NsfwDetector detector = await NsfwDetector.load();
       NsfwResult? result = await detector.detectNSFWFromBytes(imageData);
 
       print("NSFW score: ${result?.score}");
@@ -44,7 +46,6 @@ void main() {
       final ByteData data = await rootBundle.load('assets/dress.jpeg');
       final Uint8List imageData = data.buffer.asUint8List();
 
-      NsfwDetector detector = await NsfwDetector.load();
       NsfwResult? result = await detector.detectNSFWFromBytes(imageData);
 
       print("NSFW score: ${result?.score}");
