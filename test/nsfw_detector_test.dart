@@ -4,9 +4,9 @@ import 'package:nsfw_detector_flutter/src/nsfw_detector.dart';
 void main() {
   group('NsfwResult', () {
     test('supports equality, hashCode, and toString', () {
-      final first = NsfwResult(true, 0.87);
-      final second = NsfwResult(true, 0.87);
-      final different = NsfwResult(false, 0.87);
+      final first = NsfwResult(isNsfw: true, score: 0.87);
+      final second = NsfwResult(isNsfw: true, score: 0.87);
+      final different = NsfwResult(isNsfw: false, score: 0.87);
 
       expect(first, equals(second));
       expect(first.hashCode, equals(second.hashCode));

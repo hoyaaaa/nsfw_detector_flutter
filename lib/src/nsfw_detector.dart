@@ -49,7 +49,7 @@ class NsfwResult {
   final double score;
 
   /// Constructor for creating an instance of NsfwResult
-  NsfwResult(this.isNsfw, this.score);
+  NsfwResult({required this.isNsfw, required this.score});
 
   @override
   String toString() {
@@ -173,7 +173,7 @@ class NsfwDetector {
       }
 
       final score = result[1];
-      return NsfwResult(score > _threshold, score);
+      return NsfwResult(isNsfw: score > _threshold, score: score);
     } catch (error, stackTrace) {
       if (error is NsfwDetectorException) {
         rethrow;
