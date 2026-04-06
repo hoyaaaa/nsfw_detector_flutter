@@ -33,23 +33,39 @@ That's it! You don't need any assets. 😎
 ```dart
 import 'package:nsfw_detector_flutter/nsfw_detector_flutter.dart';
 
+// Use the singleton instance
+await NsfwDetector.initialize();
+NsfwDetector detector = NsfwDetector.instance;
+
 File imageFile = File('path/to/image.jpg');
-NsfwDetector detector = await NsfwDetector.load();
 NsfwResult? result = await detector.detectNSFWFromFile(imageFile);
 
 // whether it is over threshold (default: 0.7)
 print("NSFW detected: ${result?.isNsfw}");
 // float value from 0 to 1
 print("NSFW score: ${result?.score}");
+print("Safe score: ${result?.safeScore}");
+print("Classification: ${result?.classification.name}");
+
+// Clean up resources when done
+NsfwDetector.disposeInstance();
 ```
 
 ## 📙 Usage
 
 ### Load and initialize the detector
 
-The `NsfwDetector` can be initialized with default parameters:
+The `NsfwDetector` can be initialized and accessed as a singleton, or instantiated via `load()`:
 
 ```dart
+// Singleton usage (Recommended)
+await NsfwDetector.initialize(threshold: 0.7);
+NsfwDetector detector = NsfwDetector.instance;
+
+// ... later when done ...
+NsfwDetector.disposeInstance();
+
+// Or instantiate directly
 NsfwDetector detector = await NsfwDetector.load(); // default threshold: 0.7
 ```
 
@@ -59,12 +75,19 @@ NsfwDetector detector = await NsfwDetector.load(); // default threshold: 0.7
 
 ### NsfwResult
 
-The `NsfwResult` class contains the following properties:
+The `NsfwResult` class contains the following properties and methods:
 
-| Parameter     | Type    | Description                                                   |
-|---------------|-------- |---------------------------------------------------------------|
-| `score`       | Float   | The NSFW score of the image (0 to 1, higher indicates more NSFW) |
-| `isNsfw`      | Boolean | Indicates if the image is classified as NSFW based on the threshold |
+| Property         | Type                 | Description                                                   |
+|------------------|----------------------|---------------------------------------------------------------|
+| `score`          | double               | The NSFW score of the image (0 to 1, higher indicates more NSFW) |
+| `safeScore`      | double               | The safe score of the image (0 to 1)                          |
+| `isNsfw`         | bool                 | Indicates if the image is classified as NSFW based on the threshold |
+| `classification` | `NsfwClassification` | An enum (`safe`, `questionable`, `nsfw`) based on the score   |
+
+It also includes standard methods for serialization and object copying:
+- `toJson()`: Serializes the result to a JSON map.
+- `fromJson(Map<String, dynamic> json)`: Creates a result from a JSON object.
+- `copyWith(...)`: Returns a copy of the result with updated properties.
 
 ### Detect NSFW content
 
@@ -72,18 +95,33 @@ The `NsfwResult` class contains the following properties:
 // from bytes
 final ByteData data = await rootBundle.load('assets/nsfw.jpeg');
 final Uint8List imageData = data.buffer.asUint8List();
-
 NsfwResult? result = await detector.detectNSFWFromBytes(imageData);
+
+// detect in background isolate
+NsfwResult? resultInBackground = await NsfwDetector.detectBytesInBackground(imageData);
 
 // from file
 File imageFile = File('path/to/image.jpg');
-NsfwResult? result = await detector.detectNSFWFromFile(imageFile);
+NsfwResult? resultFile = await detector.detectNSFWFromFile(imageFile);
+
+// from XFile (cross_file)
+import 'package:cross_file/cross_file.dart';
+XFile xFile = XFile('path/to/image.jpg');
+NsfwResult? resultXFile = await detector.detectNSFWFromXFile(xFile);
+
+// from batch
+List<Uint8List> images = [imageData1, imageData2];
+List<NsfwResult?> results = await detector.detectBatch(images);
+
+// from URL
+Uri url = Uri.parse('https://example.com/image.jpg');
+NsfwResult? resultUrl = await detector.detectNSFWFromUrl(url); // Redirects are followed, 10s timeout
 
 // from image
 import 'package:image/image.dart' as img;
 
 img.Image image = img.decodeImage(File('path/to/image.jpg').readAsBytesSync())!;
-NsfwResult? result = await detector.detectNSFWFromImage(image);
+NsfwResult? resultImage = await detector.detectNSFWFromImage(image);
 ```
 
 ## ⚠️ Warnings
@@ -93,6 +131,8 @@ NsfwResult? result = await detector.detectNSFWFromImage(image);
 If there are issues related to the library on iOS and it doesn't work, check the following setting in XCode:
 
 1. Ensure that **XCode > Build Settings > Deployment > Strip Linked Product** is set to **No**.
+
+**Note on HEIC limitation for iOS**: Image formats like HEIC (which are the default camera format on iOS) may not be fully supported depending on the iOS version and internal decoding libraries by the `image` package. It is recommended to convert them to JPEG or PNG before processing.
 
 ### Android
 
