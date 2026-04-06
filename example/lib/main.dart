@@ -22,18 +22,35 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _detectNSFW() async {
-    // Load the image file
-    final ByteData data = await rootBundle.load('assets/nsfw.jpeg');
-    final Uint8List imageData = data.buffer.asUint8List();
-    img.Image image = img.decodeImage(imageData)!;
+    try {
+      // Load the image file
+      final ByteData data = await rootBundle.load('assets/nsfw.jpeg');
+      final Uint8List imageData = data.buffer.asUint8List();
+      
+      img.Image? image = img.decodeImage(imageData);
+      if (image == null) {
+        setState(() {
+          _result = 'Failed to decode image.';
+        });
+        return;
+      }
 
-    // Load and initialize the NSFW detector
-    NsfwDetector detector = await NsfwDetector.load();
-    NsfwResult? result = await detector.detectNSFWFromImage(image);
+      // Load and initialize the NSFW detector
+      NsfwDetector detector = await NsfwDetector.load();
+      try {
+        NsfwResult? result = await detector.detectNSFWFromImage(image);
 
-    setState(() {
-      _result = 'NSFW score: ${result?.score}, Detected: ${result?.isNsfw}';
-    });
+        setState(() {
+          _result = 'NSFW score: ${result?.score}, Detected: ${result?.isNsfw}';
+        });
+      } finally {
+        detector.close();
+      }
+    } catch (e) {
+      setState(() {
+        _result = 'Error: $e';
+      });
+    }
   }
 
   @override
