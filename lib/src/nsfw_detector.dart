@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -429,9 +430,21 @@ class NsfwDetector {
   static Future<NsfwResult?> detectBytesInBackground(
     Uint8List imageData, {
     double threshold = _kNSFWThreshold,
-  }) {
+  }) async {
     _validateThreshold(threshold);
-    return compute(_detectInIsolate, _IsolatePayload(imageData, threshold));
+
+    // A spawned isolate cannot access Flutter's rootBundle. Load the package
+    // asset on the root isolate and pass the model bytes to the worker.
+    final modelData = await rootBundle.load(_kModelPath);
+    final modelBytes = modelData.buffer.asUint8List(
+      modelData.offsetInBytes,
+      modelData.lengthInBytes,
+    );
+
+    return compute(
+      _detectInIsolate,
+      _IsolatePayload(imageData, modelBytes, threshold),
+    );
   }
 
   static Future<NsfwDetector> _loadWithGpu(double threshold) async {
@@ -463,12 +476,14 @@ class NsfwDetector {
 
 class _IsolatePayload {
   final Uint8List imageData;
+  final Uint8List modelBytes;
   final double threshold;
-  _IsolatePayload(this.imageData, this.threshold);
+  _IsolatePayload(this.imageData, this.modelBytes, this.threshold);
 }
 
 Future<NsfwResult?> _detectInIsolate(_IsolatePayload payload) async {
-  final detector = await NsfwDetector.load(threshold: payload.threshold);
+  final interpreter = Interpreter.fromBuffer(payload.modelBytes);
+  final detector = NsfwDetector._create(interpreter, payload.threshold);
   try {
     return await detector.detectNSFWFromBytes(payload.imageData);
   } finally {
