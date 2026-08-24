@@ -1,6 +1,6 @@
 name: nsfw_detector_flutter
 description: A Flutter package to detect NSFW (Not Safe For Work / NUDE / adults) content and classify SAFE content without requiring assets. Easily integrate NSFW detection into your app.
-version: 2.0.1
+version: 2.0.2
 homepage: https://github.com/hoyaaaa/nsfw_detector_flutter
 
 environment:

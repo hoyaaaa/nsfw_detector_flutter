@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -133,8 +133,20 @@ class NsfwDetector {
   /// Default threshold for classifying NSFW content
   static const _kNSFWThreshold = 0.7;
 
+  /// Default timeout for downloading a remote image.
+  static const _kUrlTimeout = Duration(seconds: 10);
+
+  /// Maximum remote image size accepted by [detectNSFWFromUrl].
+  static const _kMaxUrlBytes = 32 * 1024 * 1024;
+
   /// Singleton instance
   static NsfwDetector? _instance;
+
+  /// In-flight singleton initialization shared by concurrent callers.
+  static Future<NsfwDetector>? _initializing;
+
+  /// Invalidates an in-flight initialization when the singleton is disposed.
+  static int _lifecycleGeneration = 0;
 
   /// Whether the singleton has been initialized.
   static bool get isInitialized => _instance != null;
@@ -152,11 +164,27 @@ class NsfwDetector {
   /// Initializes the singleton instance. No-op if already initialized.
   static Future<void> initialize({double threshold = _kNSFWThreshold}) async {
     if (_instance != null) return;
-    _instance = await load(threshold: threshold);
+
+    final generation = _lifecycleGeneration;
+    final initializing = _initializing ??= load(threshold: threshold);
+    try {
+      final detector = await initializing;
+      if (generation != _lifecycleGeneration) {
+        detector.close();
+        return;
+      }
+      _instance ??= detector;
+    } finally {
+      if (identical(_initializing, initializing)) {
+        _initializing = null;
+      }
+    }
   }
 
   /// Disposes the singleton instance and releases resources.
   static void disposeInstance() {
+    _lifecycleGeneration++;
+    _initializing = null;
     _instance?.close();
     _instance = null;
   }
@@ -181,6 +209,7 @@ class NsfwDetector {
 
   /// Closes the interpreter to release resources
   void close() {
+    if (_isClosed) return;
     _isClosed = true;
     try {
       _interpreter.close();
@@ -270,27 +299,36 @@ class NsfwDetector {
   /// Detects NSFW content from a URL.
   ///
   /// Downloads the image from [url] and detects NSFW content.
-  /// Follows HTTP redirects. The timeout for the HTTP request is 10 seconds.
-  /// Throws [NsfwDetectorException] if the request times out or returns a non-200 status code.
-  Future<NsfwResult?> detectNSFWFromUrl(Uri url) async {
+  /// Follows HTTP redirects. The default timeout is 10 seconds and the default
+  /// maximum response size is 32 MB.
+  /// Throws [NsfwDetectorException] if the request times out, exceeds
+  /// [maxBytes], or returns a non-200 status code.
+  Future<NsfwResult?> detectNSFWFromUrl(
+    Uri url, {
+    Duration timeout = _kUrlTimeout,
+    int maxBytes = _kMaxUrlBytes,
+  }) async {
     if (_isClosed) throw StateError('NsfwDetector has been closed.');
+    if (url.scheme != 'http' && url.scheme != 'https') {
+      throw ArgumentError.value(url, 'url', 'Must use the HTTP or HTTPS scheme.');
+    }
+    if (timeout <= Duration.zero) {
+      throw ArgumentError.value(timeout, 'timeout', 'Must be greater than zero.');
+    }
+    if (maxBytes <= 0) {
+      throw ArgumentError.value(maxBytes, 'maxBytes', 'Must be greater than zero.');
+    }
 
     final client = HttpClient();
-    client.connectionTimeout = const Duration(seconds: 10);
+    client.connectionTimeout = timeout;
 
     try {
-      final request = await client.getUrl(url);
-      final response = await request.close().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw TimeoutException('HTTP request timed out after 10 seconds.'),
+      return await _downloadAndDetect(client, url, maxBytes).timeout(
+        timeout,
+        onTimeout: () => throw TimeoutException(
+          'HTTP request timed out after ${timeout.inMilliseconds} ms.',
+        ),
       );
-
-      if (response.statusCode != HttpStatus.ok) {
-        throw HttpException('HTTP request failed with status: ${response.statusCode}');
-      }
-
-      final bytes = await consolidateHttpClientResponseBytes(response);
-      return await detectNSFWFromBytes(bytes);
     } catch (error, stackTrace) {
       if (error is NsfwDetectorException) {
         rethrow;
@@ -301,8 +339,33 @@ class NsfwDetector {
         stackTrace: stackTrace,
       );
     } finally {
-      client.close();
+      client.close(force: true);
     }
+  }
+
+  Future<NsfwResult?> _downloadAndDetect(
+    HttpClient client,
+    Uri url,
+    int maxBytes,
+  ) async {
+    final request = await client.getUrl(url);
+    final response = await request.close();
+
+    if (response.statusCode != HttpStatus.ok) {
+      throw HttpException('HTTP request failed with status: ${response.statusCode}');
+    }
+    if (response.contentLength > maxBytes) {
+      throw HttpException('HTTP response exceeds the $maxBytes byte limit.');
+    }
+
+    final builder = BytesBuilder(copy: false);
+    await for (final chunk in response) {
+      if (builder.length + chunk.length > maxBytes) {
+        throw HttpException('HTTP response exceeds the $maxBytes byte limit.');
+      }
+      builder.add(chunk);
+    }
+    return detectNSFWFromBytes(builder.takeBytes());
   }
 
   /// Detects NSFW content from an [XFile].
@@ -366,7 +429,11 @@ class NsfwDetector {
       }
 
       final score = result[1];
-      return NsfwResult(isNsfw: score > _threshold, score: score, safeScore: result[0]);
+      return NsfwResult(
+        isNsfw: isScoreNsfw(score, _threshold),
+        score: score,
+        safeScore: result[0],
+      );
     } catch (error, stackTrace) {
       if (error is NsfwDetectorException) {
         rethrow;
@@ -410,6 +477,12 @@ class NsfwDetector {
     _validateThreshold(threshold);
   }
 
+  /// Returns whether [score] meets [threshold].
+  @visibleForTesting
+  static bool isScoreNsfw(double score, double threshold) {
+    return score >= threshold;
+  }
+
   static void _validateThreshold(double threshold) {
     if (threshold.isNaN ||
         threshold.isInfinite ||
@@ -425,26 +498,29 @@ class NsfwDetector {
 
   /// Runs NSFW detection in a background isolate via [compute].
   ///
-  /// Loads a fresh interpreter in the background isolate, runs detection,
-  /// and closes the interpreter before returning the result.
+  /// Loads a fresh interpreter on the root isolate, runs detection with its
+  /// native address in the worker, and closes it before returning the result.
   static Future<NsfwResult?> detectBytesInBackground(
     Uint8List imageData, {
     double threshold = _kNSFWThreshold,
   }) async {
     _validateThreshold(threshold);
+    if (imageData.isEmpty) {
+      throw ArgumentError('imageData must not be empty.');
+    }
 
-    // A spawned isolate cannot access Flutter's rootBundle. Load the package
-    // asset on the root isolate and pass the model bytes to the worker.
-    final modelData = await rootBundle.load(_kModelPath);
-    final modelBytes = modelData.buffer.asUint8List(
-      modelData.offsetInBytes,
-      modelData.lengthInBytes,
-    );
-
-    return compute(
-      _detectInIsolate,
-      _IsolatePayload(imageData, modelBytes, threshold),
-    );
+    // Load the model on the root isolate, then pass only its native address and
+    // image bytes to the worker. Interpreter addresses are designed to be
+    // shared with isolates by tflite_flutter.
+    final detector = await load(threshold: threshold);
+    try {
+      return await compute(
+        _detectInIsolate,
+        _IsolatePayload(imageData, detector._interpreter.address, threshold),
+      );
+    } finally {
+      detector.close();
+    }
   }
 
   static Future<NsfwDetector> _loadWithGpu(double threshold) async {
@@ -476,17 +552,15 @@ class NsfwDetector {
 
 class _IsolatePayload {
   final Uint8List imageData;
-  final Uint8List modelBytes;
+  final int interpreterAddress;
   final double threshold;
-  _IsolatePayload(this.imageData, this.modelBytes, this.threshold);
+  _IsolatePayload(this.imageData, this.interpreterAddress, this.threshold);
 }
 
 Future<NsfwResult?> _detectInIsolate(_IsolatePayload payload) async {
-  final interpreter = Interpreter.fromBuffer(payload.modelBytes);
+  final interpreter = Interpreter.fromAddress(payload.interpreterAddress);
   final detector = NsfwDetector._create(interpreter, payload.threshold);
-  try {
-    return await detector.detectNSFWFromBytes(payload.imageData);
-  } finally {
-    detector.close();
-  }
+  // The root isolate owns and closes the native interpreter after this worker
+  // returns. Closing this isolate-local wrapper would delete it twice.
+  return detector.detectNSFWFromBytes(payload.imageData);
 }

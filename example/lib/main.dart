@@ -1,15 +1,16 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:nsfw_detector_flutter/nsfw_detector_flutter.dart';
-import 'package:flutter/services.dart';
-import 'package:image/image.dart' as img;
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
@@ -26,20 +27,13 @@ class _MyAppState extends State<MyApp> {
       // Load the image file
       final ByteData data = await rootBundle.load('assets/nsfw.jpeg');
       final Uint8List imageData = data.buffer.asUint8List();
-      
-      img.Image? image = img.decodeImage(imageData);
-      if (image == null) {
-        setState(() {
-          _result = 'Failed to decode image.';
-        });
-        return;
-      }
 
       // Load and initialize the NSFW detector
-      NsfwDetector detector = await NsfwDetector.load();
+      final detector = await NsfwDetector.load();
       try {
-        NsfwResult? result = await detector.detectNSFWFromImage(image);
+        final result = await detector.detectNSFWFromBytes(imageData);
 
+        if (!mounted) return;
         setState(() {
           _result = 'NSFW score: ${result?.score}, Detected: ${result?.isNsfw}';
         });
@@ -47,6 +41,7 @@ class _MyAppState extends State<MyApp> {
         detector.close();
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _result = 'Error: $e';
       });
@@ -58,7 +53,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: Text('NSFW Detector Example'),
+          title: const Text('NSFW Detector Example'),
         ),
         body: Center(
           child: Text(_result),
