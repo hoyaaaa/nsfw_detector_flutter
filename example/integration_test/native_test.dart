@@ -32,6 +32,16 @@ void main() {
       expect(result?.isNsfw, true);
     });
 
+    test('NSFW Detection Test in background isolate', () async {
+      final ByteData data = await rootBundle.load('assets/nsfw.jpeg');
+      final Uint8List imageData = data.buffer.asUint8List();
+
+      final result = await NsfwDetector.detectBytesInBackground(imageData);
+
+      print('Background NSFW score: ${result?.score}');
+      expect(result?.isNsfw, true);
+    });
+
     test('NSFW Detection Test for bikini', () async {
       final ByteData data = await rootBundle.load('assets/bikini.jpeg');
       final Uint8List imageData = data.buffer.asUint8List();
