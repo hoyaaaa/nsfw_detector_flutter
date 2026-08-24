@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.1] - 2026-08-24
+### Fixed
+- Fixed `detectBytesInBackground()` failing to load the bundled model in a spawned isolate ([#4](https://github.com/hoyaaaa/nsfw_detector_flutter/issues/4)).
+
 ## [2.0.0] - 2026-04-06
 ### Breaking Changes
 - `NsfwResult` constructor now uses named required parameters: `NsfwResult(isNsfw: ..., score: ..., safeScore: ...)`.
