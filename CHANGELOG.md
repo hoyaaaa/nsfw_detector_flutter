@@ -11,6 +11,7 @@
 ### Changed
 - Added optional `timeout` and `maxBytes` parameters to `detectNSFWFromUrl()`.
 - Added unit, package, and Android emulator integration checks to CI.
+- Updated the example Android project to the current Flutter Gradle template versions.
 
 ## [2.0.1] - 2026-08-24
 ### Fixed
