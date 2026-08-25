@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -36,10 +38,19 @@ void main() {
       final ByteData data = await rootBundle.load('assets/nsfw.jpeg');
       final Uint8List imageData = data.buffer.asUint8List();
 
-      final result = await NsfwDetector.detectBytesInBackground(imageData);
+      final first = await NsfwDetector.detectBytesInBackground(imageData);
+      final second = await NsfwDetector.detectBytesInBackground(imageData);
 
-      print('Background NSFW score: ${result?.score}');
-      expect(result?.isNsfw, true);
+      print('Background NSFW score: ${first?.score}');
+      expect(first?.isNsfw, true);
+      expect(second?.isNsfw, true);
+    });
+
+    test('Background detection rejects empty bytes', () async {
+      await expectLater(
+        NsfwDetector.detectBytesInBackground(Uint8List(0)),
+        throwsArgumentError,
+      );
     });
 
     test('NSFW Detection Test for bikini', () async {
@@ -60,6 +71,48 @@ void main() {
 
       print("NSFW score: ${result?.score}");
       expect(result?.isNsfw, false);
+    });
+
+    test('URL detection enforces the response size limit', () async {
+      final data = await rootBundle.load('assets/nsfw.jpeg');
+      final imageData = data.buffer.asUint8List();
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((request) {
+        request.response.contentLength = imageData.length;
+        request.response.add(imageData);
+        request.response.close();
+      });
+
+      try {
+        await expectLater(
+          detector.detectNSFWFromUrl(
+            Uri.parse('http://${server.address.host}:${server.port}/image'),
+            maxBytes: imageData.length - 1,
+          ),
+          throwsA(isA<NsfwDetectorException>()),
+        );
+      } finally {
+        await server.close(force: true);
+      }
+    });
+
+    test('Singleton initialization is safe when called concurrently', () async {
+      NsfwDetector.disposeInstance();
+
+      await Future.wait([
+        NsfwDetector.initialize(),
+        NsfwDetector.initialize(),
+      ]);
+
+      expect(NsfwDetector.isInitialized, isTrue);
+      NsfwDetector.disposeInstance();
+    });
+
+    test('Detector close is idempotent', () async {
+      final disposable = await NsfwDetector.load();
+
+      disposable.close();
+      disposable.close();
     });
   } else {
     print('NSFW Detector tests skipped on non-Android and non-iOS platforms.');

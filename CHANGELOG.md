@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.2] - 2026-08-24
+### Fixed
+- Scores equal to the configured threshold are now classified as NSFW.
+- Concurrent singleton initialization no longer creates duplicate interpreters.
+- `detectBytesInBackground()` now passes the native interpreter address instead of copying the 22 MB model into each isolate.
+- URL detection now enforces the configured timeout and response-size limit.
+- Calling `close()` more than once is now safe.
+
+### Changed
+- Added optional `timeout` and `maxBytes` parameters to `detectNSFWFromUrl()`.
+- Added unit, package, and Android emulator integration checks to CI.
+- Updated the example Android project to the current Flutter Gradle template versions.
+
 ## [2.0.1] - 2026-08-24
 ### Fixed
 - Fixed `detectBytesInBackground()` failing to load the bundled model in a spawned isolate ([#4](https://github.com/hoyaaaa/nsfw_detector_flutter/issues/4)).

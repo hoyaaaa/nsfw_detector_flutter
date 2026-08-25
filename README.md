@@ -121,7 +121,7 @@ All methods return `NsfwResult?`. Returns `null` if the image could not be decod
 | `detectNSFWFromBytes(Uint8List)` | Raw image bytes | Supports JPEG, PNG, WebP, BMP, GIF |
 | `detectNSFWFromFile(File)` | `dart:io` File | Async file read + decode |
 | `detectNSFWFromXFile(XFile)` | `package:cross_file` XFile | Compatible with `image_picker`, `camera` |
-| `detectNSFWFromUrl(Uri)` | HTTP/HTTPS URL | 10s timeout, follows redirects |
+| `detectNSFWFromUrl(Uri)` | HTTP/HTTPS URL | 10s timeout, 32 MB limit, follows redirects |
 | `detectNSFWFromImage(img.Image)` | `package:image` Image | Pre-decoded image |
 | `detectBatch(List<Uint8List>)` | List of byte arrays | Sequential, returns `List<NsfwResult?>` |
 | `detectBytesInBackground(Uint8List)` | Raw image bytes | **Static.** Runs in background isolate via `compute()` |
@@ -150,6 +150,8 @@ if (pickedFile != null) {
 // From URL
 final result = await detector.detectNSFWFromUrl(
   Uri.parse('https://example.com/photo.jpg'),
+  timeout: const Duration(seconds: 10),
+  maxBytes: 32 * 1024 * 1024,
 );
 
 // Batch scan (e.g., gallery images before upload)
@@ -169,7 +171,7 @@ final result = await NsfwDetector.detectBytesInBackground(
 ```dart
 final result = await detector.detectNSFWFromBytes(imageBytes);
 
-result.isNsfw;           // bool   — true if score > threshold
+result.isNsfw;           // bool   — true if score >= threshold
 result.score;            // double — NSFW probability (0.0–1.0)
 result.safeScore;        // double — safe probability (0.0–1.0); score + safeScore ≈ 1.0
 result.classification;   // NsfwClassification enum (see below)

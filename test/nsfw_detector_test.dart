@@ -113,6 +113,16 @@ void main() {
     });
   });
 
+  group('NsfwDetector.isScoreNsfw', () {
+    test('includes a score equal to the threshold', () {
+      expect(NsfwDetector.isScoreNsfw(0.7, 0.7), isTrue);
+    });
+
+    test('rejects a score below the threshold', () {
+      expect(NsfwDetector.isScoreNsfw(0.699, 0.7), isFalse);
+    });
+  });
+
   group('NsfwDetectorException', () {
     test('toString omits cause when one is not provided', () {
       expect(
