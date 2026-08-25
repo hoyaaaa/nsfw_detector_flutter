@@ -297,7 +297,9 @@ Run integration tests on a physical device or emulator:
 
 ```sh
 cd example
-flutter test integration_test/native_test.dart
+flutter drive \
+  --driver=test_driver/integration_test_driver.dart \
+  --target=integration_test/native_test.dart
 ```
 
 See [example/README.md](example/README.md) for more details.
